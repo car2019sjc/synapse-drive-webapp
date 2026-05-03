@@ -29,6 +29,11 @@ COPY package.json pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
 
+# 1) Builda PRIMEIRO o shared (tipos + JS compilado em dist/)
+WORKDIR /app/packages/shared
+RUN pnpm build
+
+# 2) Builda o backend (que importa @synapse/shared via dist)
 WORKDIR /app/apps/backend
 RUN pnpm prisma generate
 RUN pnpm build
@@ -43,7 +48,12 @@ ENV NODE_ENV=production
 
 # Copia o monorepo necessário pra runtime
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/.npmrc ./
-COPY --from=build /app/packages/shared ./packages/shared
+
+# Shared: package.json + dist (já compilado pra JS)
+COPY --from=build /app/packages/shared/package.json ./packages/shared/
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+
+# Backend: package.json + dist + prisma + node_modules
 COPY --from=build /app/apps/backend/package.json ./apps/backend/
 COPY --from=build /app/apps/backend/dist ./apps/backend/dist
 COPY --from=build /app/apps/backend/prisma ./apps/backend/prisma

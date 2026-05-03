@@ -1,0 +1,48 @@
+# Reduzir contexto enviado ao Docker daemon (build mais rapido + evita
+# copiar artefatos locais que serão rebuildados dentro da imagem).
+
+# Dependências (reinstaladas no Dockerfile)
+**/node_modules
+.pnpm-store
+
+# Build outputs locais (rebuildados na imagem)
+**/dist
+**/build
+**/out
+**/*.tsbuildinfo
+**/.tmp
+
+# Git e CI
+.git
+.github
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+infra/.env
+
+# Frontend (não vai pra imagem do backend)
+apps/frontend
+synapse-frontend-deploy.zip
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Docs / READMEs (não precisa no runtime)
+README.md
+DEPLOY.md
+*.md
+
+# Storage de uploads (volume Docker, não pode ir na imagem)
+apps/backend/storage
+
+# Logs
+**/*.log
+logs
+
+# Tauri (futuro)
+apps/desktop
