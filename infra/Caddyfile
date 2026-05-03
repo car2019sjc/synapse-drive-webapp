@@ -1,0 +1,74 @@
+# =============================================================================
+# Caddy 2 - Reverse proxy + SSL automático (Let's Encrypt) para o backend.
+#
+# Caddy cuida de:
+#   - HTTP -> HTTPS redirect automático
+#   - Certificados Let's Encrypt automáticos (provisão + renovação)
+#   - Reverse proxy /api/* -> synapse-backend:3000
+#   - Logs em formato JSON
+#
+# IMPORTANTE: este Caddy precisa das portas 80 e 443 do HOST.
+# Verifique com `ss -tln | grep -E ':(80|443)\s'` antes do deploy.
+# =============================================================================
+
+{
+	# Email para registro Let's Encrypt e alertas de expiração de cert.
+	# Substituído automaticamente pelo deploy.sh com $ADMIN_EMAIL.
+	email {$ADMIN_EMAIL}
+
+	# Logs estruturados
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}
+
+# -----------------------------------------------------------------------------
+# api.drive.synapseia.com.br -> backend Fastify
+# -----------------------------------------------------------------------------
+api.drive.synapseia.com.br {
+	# Provisão automática de certificado Let's Encrypt (HTTP-01 challenge).
+	tls {
+		protocols tls1.2 tls1.3
+	}
+
+	# Cabeçalhos de segurança
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options    "nosniff"
+		X-Frame-Options           "DENY"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		Permissions-Policy        "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Compressão
+	encode gzip zstd
+
+	# Limite de tamanho de upload (10 MB do firmware + folga p/ multipart)
+	request_body {
+		max_size 12MB
+	}
+
+	# Reverse proxy para o backend (na rede Docker interna)
+	reverse_proxy synapse-backend:3000 {
+		# Timeout maior pra suportar uploads
+		transport http {
+			read_timeout 60s
+			write_timeout 60s
+			dial_timeout 5s
+		}
+
+		# Repassa o IP real do cliente
+		header_up X-Real-IP        {remote_host}
+		header_up X-Forwarded-For  {remote_host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,144 @@
+# =============================================================================
+# Synapse Drive WebApp - stack DEDICADA e ISOLADA
+#
+# Não interfere com nenhuma instância PostgreSQL existente da VPS:
+#   - Postgres novo, em container, com volume e network próprios
+#   - Postgres NÃO publica porta no host (apenas rede interna Docker)
+#   - Backend NÃO publica porta no host (acessível só via Caddy)
+#   - Caddy expõe 80/443 e cuida de SSL automaticamente
+#   - Limites de RAM/CPU para garantir que falhas aqui não derrubem
+#     outras aplicações em produção
+# =============================================================================
+
+networks:
+  synapse-network:
+    name: synapse-network
+    driver: bridge
+
+volumes:
+  synapse_pg_data:
+    name: synapse_pg_data
+  synapse_storage:
+    name: synapse_storage
+  synapse_caddy_data:
+    name: synapse_caddy_data
+  synapse_caddy_config:
+    name: synapse_caddy_config
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL DEDICADO (não compartilhado com outras apps)
+  # ---------------------------------------------------------------------------
+  synapse-postgres:
+    image: postgres:16-alpine
+    container_name: synapse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-synapse_drive}
+      POSTGRES_USER: ${POSTGRES_USER:-synapse_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatorio}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    expose:
+      - "5432"   # SO rede interna - NAO expõe ao host (intencional)
+    volumes:
+      - synapse_pg_data:/var/lib/postgresql/data
+    networks:
+      - synapse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-synapse_app} -d ${POSTGRES_DB:-synapse_drive}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Backend Node Fastify
+  # ---------------------------------------------------------------------------
+  synapse-backend:
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+    container_name: synapse-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-synapse_app}:${POSTGRES_PASSWORD}@synapse-postgres:5432/${POSTGRES_DB:-synapse_drive}"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatorio}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      STORAGE_DIR: /app/apps/backend/storage
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
+    expose:
+      - "3000"   # SO rede interna - Caddy faz proxy
+    volumes:
+      - synapse_storage:/app/apps/backend/storage
+    depends_on:
+      synapse-postgres:
+        condition: service_healthy
+    networks:
+      - synapse-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Caddy 2 - reverse proxy + SSL automatico (Let's Encrypt)
+  # ---------------------------------------------------------------------------
+  synapse-caddy:
+    image: caddy:2-alpine
+    container_name: synapse-caddy
+    restart: unless-stopped
+    environment:
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL obrigatorio}
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - synapse_caddy_data:/data
+      - synapse_caddy_config:/config
+    networks:
+      - synapse-network
+    depends_on:
+      synapse-backend:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

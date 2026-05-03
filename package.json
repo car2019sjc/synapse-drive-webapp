@@ -1,0 +1,29 @@
+{
+  "name": "synapse-drive-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Synapse Drive: web platform for managing USBasp driver installer + firmware updates (Trozoba)",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:backend": "pnpm --filter @synapse/backend dev",
+    "dev:frontend": "pnpm --filter @synapse/frontend dev",
+    "build": "pnpm -r build",
+    "build:backend": "pnpm --filter @synapse/backend build",
+    "build:frontend": "pnpm --filter @synapse/frontend build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @synapse/backend prisma:migrate",
+    "db:seed": "pnpm --filter @synapse/backend prisma:seed",
+    "docker:up": "docker compose -f infra/docker-compose.yml --env-file infra/.env up -d",
+    "docker:down": "docker compose -f infra/docker-compose.yml --env-file infra/.env down",
+    "docker:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "docker:rebuild": "docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,64 @@
+// Schema Prisma do Synapse Drive WebApp
+// Banco: PostgreSQL DEDICADO em container Docker isolado.
+// NUNCA compartilhar DATABASE_URL com outras aplicações.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Usuários administradores (gerenciam firmwares pelo painel web).
+model AdminUser {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  password  String // bcrypt hash
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+/// Firmwares disponíveis para download.
+model Firmware {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  version     String
+  description String?
+  fileName    String   @map("file_name")
+  fileSize    Int      @map("file_size")
+  fileSha256  String   @map("file_sha256") @db.Char(64)
+  storagePath String   @map("storage_path") // caminho relativo dentro de STORAGE_DIR
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  installations Installation[]
+
+  @@unique([name, version])
+  @@index([isActive, createdAt])
+  @@map("firmwares")
+}
+
+/// Telemetria de instalações (registrada pelo cliente após o processo).
+model Installation {
+  id           String   @id @default(uuid()) @db.Uuid
+  firmwareId   String?  @map("firmware_id") @db.Uuid
+  firmware     Firmware? @relation(fields: [firmwareId], references: [id], onDelete: SetNull)
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  status       String // 'started' | 'success' | 'failed'
+  errorMessage String?  @map("error_message")
+  clientVersion String? @map("client_version")
+  windowsVersion String? @map("windows_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@index([firmwareId])
+  @@map("installations")
+}
