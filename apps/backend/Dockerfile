@@ -49,9 +49,10 @@ ENV NODE_ENV=production
 # Copia o monorepo necessário pra runtime
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/.npmrc ./
 
-# Shared: package.json + dist (já compilado pra JS)
+# Shared: package.json + dist (compilado) + node_modules (zod etc.)
 COPY --from=build /app/packages/shared/package.json ./packages/shared/
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Backend: package.json + dist + prisma + node_modules
 COPY --from=build /app/apps/backend/package.json ./apps/backend/
