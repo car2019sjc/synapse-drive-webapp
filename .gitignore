@@ -62,3 +62,13 @@ apps/frontend/dist/
 
 # Pacote de deploy gerado pra Netlify drag-and-drop
 synapse-frontend-deploy.zip
+
+# Binarios pesados servidos no frontend publico (gerados via script
+# scripts/build-installer-zip.ps1 a partir de "Synapse Drive Installation").
+# Sao empacotados pelo Vite no dist/ e servidos pelo Netlify.
+apps/frontend/public/downloads/*.zip
+apps/frontend/public/downloads/*.exe
+apps/frontend/public/downloads/*.msi
+
+# Staging do empacotador
+.tmp-installer-stage/

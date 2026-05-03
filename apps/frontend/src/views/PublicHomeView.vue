@@ -5,13 +5,17 @@ import { publicApi } from '@/api/public';
 import { extractErrorMessage } from '@/api/http';
 import { formatBytes, formatDate, shortHash } from '@/lib/format';
 import AppBadge from '@/components/AppBadge.vue';
-import AppButton from '@/components/AppButton.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 
 const firmwares = ref<Firmware[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+
+// URL do pacote estático servido pelo Netlify (public/downloads/).
+// Atualizar via: pwsh -File scripts/build-installer-zip.ps1
+const INSTALLER_URL = '/downloads/synapse-installer-windows.zip';
+const INSTALLER_FILENAME = 'synapse-installer-windows.zip';
 
 onMounted(async () => {
   try {
@@ -22,14 +26,6 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-
-function downloadInstaller() {
-  // Por enquanto o instalador (Tauri) ainda não está hospedado.
-  // Quando publicarmos o release, troque este link pela URL pública do .exe.
-  window.alert(
-    'O instalador Synapse Drive estará disponível em breve.\n\nEnquanto isso, baixe diretamente os firmwares ativos abaixo.'
-  );
-}
 </script>
 
 <template>
@@ -47,12 +43,16 @@ function downloadInstaller() {
             seu equipamento usando os arquivos oficiais publicados aqui.
           </p>
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-            <AppButton size="md" @click="downloadInstaller">
+            <a
+              :href="INSTALLER_URL"
+              :download="INSTALLER_FILENAME"
+              class="btn btn-primary"
+            >
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
               </svg>
               Baixar instalador (Windows)
-            </AppButton>
+            </a>
             <a
               href="#firmwares"
               class="btn btn-secondary"
@@ -61,7 +61,7 @@ function downloadInstaller() {
             </a>
           </div>
           <p class="mt-3 text-xs text-slate-500">
-            Compatível com Windows 10 e 11 (x64). Requer permissão de administrador.
+            Compatível com Windows 10 e 11 (x64). Requer permissão de administrador. ZIP de ~12 MB com drivers + utilitários.
           </p>
         </div>
 
