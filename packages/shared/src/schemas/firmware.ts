@@ -1,11 +1,31 @@
 import { z } from 'zod';
 
-/** Versão semântica simples (1.2.3 ou 1.2.3-beta.1). */
+/**
+ * Versão semântica flexível.
+ * Aceita:
+ *   - MAJOR.MINOR.PATCH                (ex: 1.2.3)
+ *   - MAJOR.MINOR.PATCH-prerelease     (ex: 1.2.3-beta.1)
+ *   - MAJOR.MINOR  (PATCH=0 implícito) (ex: 2.5  -> normaliza pra 2.5.0)
+ *   - MAJOR.MINOR-prerelease           (ex: 2.5-rc.1 -> 2.5.0-rc.1)
+ *
+ * Internamente sempre normaliza pra forma MAJOR.MINOR.PATCH para garantir
+ * comparações consistentes no client Tauri (Fase 3).
+ */
 const VersionSchema = z
   .string()
+  .trim()
   .min(1)
   .max(40)
-  .regex(/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/, 'Use formato semver (ex: 1.2.3 ou 1.2.3-beta.1)');
+  .regex(
+    /^\d+\.\d+(\.\d+)?(-[a-zA-Z0-9.-]+)?$/,
+    'Use formato semver (ex: 1.2.3, 2.5, 1.2.3-beta.1)'
+  )
+  .transform((v) => {
+    const m = v.match(/^(\d+)\.(\d+)(?:\.(\d+))?(-[a-zA-Z0-9.-]+)?$/);
+    if (!m) return v;
+    const [, major, minor, patch, pre] = m;
+    return `${major}.${minor}.${patch ?? '0'}${pre ?? ''}`;
+  });
 
 export const FirmwareSchema = z.object({
   id: z.string().uuid(),
