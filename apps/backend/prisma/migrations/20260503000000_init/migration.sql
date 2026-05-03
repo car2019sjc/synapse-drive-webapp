@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE "admin_users" (
     "id" UUID NOT NULL,
     "email" TEXT NOT NULL,
