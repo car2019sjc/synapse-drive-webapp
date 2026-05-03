@@ -33,24 +33,21 @@ info "Verificando pre-requisitos..."
 command -v docker >/dev/null 2>&1 || fatal "docker nao encontrado"
 docker compose version >/dev/null 2>&1 || fatal "docker compose v2 nao disponivel"
 
-# Portas 80 e 443 do host livres? (a menos que CADDY_*_PORT esteja override-ado)
+# Esta stack usa TLS-ALPN-01 challenge (Let's Encrypt via porta 443),
+# entao SO precisamos da porta 443 livre. Porta 80 pode estar usada por
+# outro proxy/nginx existente na VPS sem conflito.
 if [[ -f .env ]]; then
-    HTTP_PORT=$(grep -E '^CADDY_HTTP_PORT=' .env | cut -d= -f2 || echo "80")
     HTTPS_PORT=$(grep -E '^CADDY_HTTPS_PORT=' .env | cut -d= -f2 || echo "443")
 else
-    HTTP_PORT=80
     HTTPS_PORT=443
 fi
 
-for port in "$HTTP_PORT" "$HTTPS_PORT"; do
-    if ss -tln 2>/dev/null | awk '{print $4}' | grep -E ":${port}$" >/dev/null; then
-        # Permite se for nosso proprio container Caddy
-        if ! docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep -q "synapse-caddy.*:${port}->"; then
-            fatal "Porta ${port} ja esta em uso por outro processo. Veja com: ss -tlnp | grep :${port}"
-        fi
+if ss -tln 2>/dev/null | awk '{print $4}' | grep -E ":${HTTPS_PORT}$" >/dev/null; then
+    if ! docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep -q "synapse-caddy.*:${HTTPS_PORT}->"; then
+        fatal "Porta ${HTTPS_PORT} ja esta em uso por outro processo. Veja com: ss -tlnp | grep :${HTTPS_PORT}"
     fi
-done
-info "Portas ${HTTP_PORT}/${HTTPS_PORT} OK."
+fi
+info "Porta ${HTTPS_PORT} (HTTPS) OK."
 
 # =============================================================================
 # 2) .env: gera secrets fortes na primeira execucao

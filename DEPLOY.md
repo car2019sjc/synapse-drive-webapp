@@ -5,8 +5,12 @@ Guia passo-a-passo (≈10 minutos) para subir o backend numa VPS Linux com Docke
 ## Pré-requisitos na VPS
 
 - Docker + Docker Compose v2 instalados
-- Portas **80** e **443** do host livres (Caddy precisa pra SSL automático)
+- Porta **443** do host livre (porta 80 pode estar usada por outro nginx)
 - DNS `api.drive.synapseia.com.br` apontando para o IP da VPS
+
+> **Nota sobre SSL**: esta stack usa **TLS-ALPN-01 challenge** do Let's Encrypt
+> (validação via porta 443). Não precisa da porta 80 disponível, então convive
+> bem com outros proxies/nginx que já estejam servindo HTTP nesta VPS.
 
 ## 1. Criar o registro DNS
 
@@ -30,18 +34,21 @@ git clone https://github.com/car2019sjc/synapse-drive-webapp.git
 cd synapse-drive-webapp/infra
 ```
 
-## 3. Conferir se as portas 80/443 estão livres
+## 3. Conferir se a porta 443 está livre
 
 ```bash
-ss -tln | grep -E ':(80|443)\s'
+ss -tln | grep ':443\s'
 ```
 
-- **Sem saída** → portas livres, pode prosseguir.
-- **Com saída** → existe outro proxy ouvindo. Veja qual processo:
+- **Sem saída** → porta 443 livre, pode prosseguir.
+- **Com saída** → existe outro processo na 443. Veja qual:
   ```bash
-  ss -tlnp | grep -E ':(80|443)\s'
+  ss -tlnp | grep ':443\s'
   ```
-  Se for `synapse-lite-nginx` ou outro nginx que serve várias apps suas, **NÃO faça o deploy ainda**: avise pra adaptarmos. Subir o Caddy aqui vai falhar porque não consegue alocar 80/443.
+  Se for outro container que você queira manter, **avise antes de continuar**.
+
+> A porta 80 pode estar ocupada — esta stack não precisa dela. O Caddy aqui usa
+> TLS-ALPN-01 challenge (validação Let's Encrypt através da porta 443).
 
 ## 4. Rodar o deploy
 

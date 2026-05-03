@@ -1,22 +1,26 @@
 # =============================================================================
 # Caddy 2 - Reverse proxy + SSL automático (Let's Encrypt) para o backend.
 #
-# Caddy cuida de:
-#   - HTTP -> HTTPS redirect automático
-#   - Certificados Let's Encrypt automáticos (provisão + renovação)
-#   - Reverse proxy /api/* -> synapse-backend:3000
-#   - Logs em formato JSON
+# Modo de operação ESPECIAL desta VPS:
+#   A porta 80 do host está OCUPADA por outro nginx (synapse-lite-nginx).
+#   Por isso, Caddy escuta APENAS em 443 e usa TLS-ALPN-01 challenge
+#   (faz a validação do Let's Encrypt dentro do TLS handshake na 443).
 #
-# IMPORTANTE: este Caddy precisa das portas 80 e 443 do HOST.
-# Verifique com `ss -tln | grep -E ':(80|443)\s'` antes do deploy.
+#   - Porta 80 do host: NÃO usada por este Caddy (livre pro outro nginx)
+#   - Porta 443 do host: usada exclusivamente por este Caddy
+#   - HTTP-01 challenge: desativado (porta 80 indisponível)
+#   - TLS-ALPN-01 challenge: ativo (Let's Encrypt valida via 443)
+#   - Sem redirect HTTP -> HTTPS (a API só responde em HTTPS)
 # =============================================================================
 
 {
 	# Email para registro Let's Encrypt e alertas de expiração de cert.
-	# Substituído automaticamente pelo deploy.sh com $ADMIN_EMAIL.
 	email {$ADMIN_EMAIL}
 
-	# Logs estruturados
+	# Sem redirect HTTP->HTTPS (Caddy nao tem 80 nesta VPS).
+	auto_https disable_redirects
+
+	# Logs estruturados em JSON.
 	log {
 		output stdout
 		format json
@@ -25,12 +29,16 @@
 }
 
 # -----------------------------------------------------------------------------
-# api.drive.synapseia.com.br -> backend Fastify
+# api.drive.synapseia.com.br -> backend Fastify (interno, rede Docker)
 # -----------------------------------------------------------------------------
 api.drive.synapseia.com.br {
-	# Provisão automática de certificado Let's Encrypt (HTTP-01 challenge).
+	# Forca Let's Encrypt a usar APENAS TLS-ALPN-01 (porta 443).
+	# HTTP-01 nao funciona aqui porque a porta 80 esta tomada por outro proxy.
 	tls {
 		protocols tls1.2 tls1.3
+		issuer acme {
+			disable_http_challenge
+		}
 	}
 
 	# Cabeçalhos de segurança
@@ -53,7 +61,6 @@ api.drive.synapseia.com.br {
 
 	# Reverse proxy para o backend (na rede Docker interna)
 	reverse_proxy synapse-backend:3000 {
-		# Timeout maior pra suportar uploads
 		transport http {
 			read_timeout 60s
 			write_timeout 60s
