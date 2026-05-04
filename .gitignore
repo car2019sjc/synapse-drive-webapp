@@ -70,5 +70,8 @@ apps/frontend/public/downloads/*.zip
 apps/frontend/public/downloads/*.exe
 apps/frontend/public/downloads/*.msi
 
+# Imagens binarias do frontend (manter no repo apenas o usbasp-hardware-kit.png)
+# Outras imagens binarias devem ser commitadas individualmente conforme necessidade.
+
 # Staging do empacotador
 .tmp-installer-stage/
