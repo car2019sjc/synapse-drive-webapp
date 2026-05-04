@@ -123,11 +123,13 @@ async function copySearchTerm() {
   <!-- ======================================================== -->
   <section class="relative overflow-hidden bg-gradient-to-br from-brand-50 via-white to-white">
     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700" />
-    <div class="mx-auto max-w-4xl px-6 py-12 text-center sm:py-16">
+    <div class="mx-auto max-w-5xl px-6 py-12 text-center sm:py-16">
       <span class="badge badge-brand">Joy Slot Car</span>
-      <h1 class="mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-        Atualização do firmware do
-        <span class="text-brand-600">Synapse Lite</span>
+      <h1
+        class="mt-4 whitespace-nowrap font-bold tracking-tight text-black"
+        style="font-size: clamp(1rem, 4vw, 2.5rem); line-height: 1.2;"
+      >
+        Atualização de firmware : Synapse Lite
       </h1>
     </div>
   </section>
@@ -944,17 +946,20 @@ async function copySearchTerm() {
         </p>
       </div>
 
-      <div class="mt-10 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+      <div class="mt-10 divide-y-2 divide-brand-200 overflow-hidden rounded-xl border-2 border-brand-400 bg-white shadow-card ring-4 ring-brand-100">
         <div v-for="(item, i) in faq" :key="i">
           <button
             type="button"
-            class="flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
+            class="flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-brand-50/60"
             :aria-expanded="openFaq === i"
             @click="toggleFaq(i)"
           >
+            <span class="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
+              {{ i + 1 }}
+            </span>
             <span class="flex-1 text-sm font-medium text-slate-900">{{ item.q }}</span>
             <svg
-              class="h-5 w-5 flex-none text-slate-400 transition-transform"
+              class="h-5 w-5 flex-none text-brand-500 transition-transform"
               :class="{ 'rotate-180': openFaq === i }"
               viewBox="0 0 24 24"
               fill="none"
@@ -966,7 +971,7 @@ async function copySearchTerm() {
           </button>
           <div
             v-show="openFaq === i"
-            class="px-5 pb-5 text-sm leading-relaxed text-slate-600"
+            class="border-t-2 border-brand-100 bg-brand-50/30 px-5 py-4 pl-14 text-sm leading-relaxed text-slate-700"
           >
             {{ item.a }}
           </div>
